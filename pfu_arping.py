@@ -8,15 +8,17 @@ from pfu_common import *
 def main(target):
     tab = getmacs(target)
     print '___IP : MAC'
-    print tab['ip_mac']
+    for ip in tab['ip_mac']:
+	print ip, tab['ip_mac'][ip]
     print '___MAC : IP'
-    print tab['mac_ip']
+    for mac in tab['mac_ip']:
+	print mac, " ".join(tab['mac_ip'][mac])
 
 def getmacs(target):
     ret = {'ip_mac':{}, 'mac_ip':{}}
     msg('arping in progress')
     ans,unans = arping(target)
-    msg('yea, its finishd')
+    msg('finished')
     for a in ans:
 #	a[1].show()
 	mac = a[1][ARP].hwsrc

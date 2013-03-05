@@ -17,18 +17,22 @@ from pfu_common import *
 
 def main(target_net, target_ip):
     ret = gwscan_broadcast(target_net, target_ip)
-    print ret
+    for x in ret:
+	print "%18s %16s" % (x['gw_mac'], x['gw_ip'])
 
 def usage():
-    print "%s 192.168.1.0/24 8.8.8.8" % __name__
+    print "Usage:"
+    print "\t%s <target_net> <target_ip>" % sys.argv[0]
+    print "example:"
+    print "\t%s 192.168.1.0/24 8.8.8.8" % sys.argv[0]
+    exit(1)
 
 def gwscan_broadcast(t_net, t_ip):
     msg('gwscan for net %s, searching gw for %s' %(t_net, t_ip))
     lt = getmacs(t_net)
-    #ans,unans = srp( Ether(dst='ff:ff:ff:ff:ff:ff') / IP(dst=target) / TCP(sport=11111, dport=80, flags="S"), timeout=1 )
-    # broadcast mac, target ip, aki gw az tovabbdobja
-    msg('pinging hosts: %s (broadcast mac)' % t_ip)
-    ans,unans = srp( Ether(dst='ff:ff:ff:ff:ff:ff') / IP(dst=t_ip) / ICMP(), timeout=2 )
+#    ans,unans = srp( Ether(dst='ff:ff:ff:ff:ff:ff') / IP(dst=t_ip) / TCP(sport=11111, dport=80, flags="S"), timeout=1 )
+#    ans,unans = srp( Ether(dst='ff:ff:ff:ff:ff:ff') / IP(dst=t_ip) / ICMP(), timeout=2 )
+    ans,unans = srp( Ether(dst=lt['mac_ip'].keys()) / IP(dst=t_ip) / ICMP(), timeout=2 )
 #    ans.show()
     ret = []
     for a in ans:
@@ -41,7 +45,7 @@ def gwscan_broadcast(t_net, t_ip):
 		'ttype':	'ping',
 		'gw_mac':	mac,
 		'gw_ip':	ip,
-		'r_ip':		r_ip
+#		'r_ip':		r_ip
 #		't_ip':		t_ip
 	    })
     msg('gwscan finished')
@@ -49,4 +53,10 @@ def gwscan_broadcast(t_net, t_ip):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    try:
+	t_net = sys.argv[1]
+	t_ip = sys.argv[2]
+    except:
+	usage()
+    main(t_net, t_ip)
+
