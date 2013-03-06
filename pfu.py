@@ -178,11 +178,11 @@ class flagfuzzer:
 			pkt = scapy.IP(dst=self.dst)
 			pkt/= scapy.TCP(dport=self.port, sport=scapy.RandNum(1024,65535), flags=flagval)
 			x = scapy.sr1( pkt, timeout=.5)
-			sys.stderr.write( " %s \r" % flagval)
+			sys.stderr.write(" %s \r" % flagval)
 			sent = pkt.sprintf("%TCP.flags%")
 			if sent == '':
 				sent = '-'
-			if (x is not None):
+			if x is not None:
 				recvd = x.sprintf("%TCP.flags%")
 				#self.r[recvd].append(sent+"."+str(x[scapy.IP].ttl))
 				self.r[recvd].append(sent)
