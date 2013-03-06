@@ -160,23 +160,26 @@ class flagfuzzer:
 			exit(1)
 		self.dst = params[0]
 		self.port = int(params[1])
-		self.r = {
-			'R':[],		# RST
-			'RA':[],	# RST-ACK
-			'SA':[],	# SYN-ACK
-			'--':[],	# no response
-			'??':[]		# ICMP error msgs (?)
-		}
-		self.scanflags = ['','F','S','FS','R','RF','RS','RSF','A','AF','AS','ASF','AR','ARF','ARS','ARSF']
 
 	def usage(self):
 		print "Usage:"
 		print "\t%s flagfuzzer <target_ip> <port>" % sys.argv[0]
 
 	def start(self):
-		for flagval in self.scanflags:
-			pkt = scapy.IP(dst=self.dst)
-			pkt/= scapy.TCP(dport=self.port, sport=scapy.RandNum(1024,65535), flags=flagval)
+		self.flagfuzzer(self.dst, self.port)
+	
+	def flagfuzzer(self, dst, port):
+		r = {
+			'R':[],		# RST
+			'RA':[],	# RST-ACK
+			'SA':[],	# SYN-ACK
+			'--':[],	# no response
+			'??':[]		# ICMP error msgs (?)
+		}
+		scanflags = ['','F','S','FS','R','RF','RS','RSF','A','AF','AS','ASF','AR','ARF','ARS','ARSF']
+		for flagval in scanflags:
+			pkt = scapy.IP(dst=dst)
+			pkt/= scapy.TCP(dport=port, sport=scapy.RandNum(1024,65535), flags=flagval)
 			x = scapy.sr1( pkt, timeout=.5)
 			sys.stderr.write(" %s \r" % flagval)
 			sent = pkt.sprintf("%TCP.flags%")
@@ -185,13 +188,13 @@ class flagfuzzer:
 			if x is not None:
 				recvd = x.sprintf("%TCP.flags%")
 				#self.r[recvd].append(sent+"."+str(x[scapy.IP].ttl))
-				self.r[recvd].append(sent)
+				r[recvd].append(sent)
 			else:
-				self.r['--'].append(sent)
+				r['--'].append(sent)
 		log.msg("finished")
-		del self.r['--']
-		for k in self.r.keys():
-			log.msg("%4s: %s" % (k, " ".join(self.r[k])))
+		del r['--']
+		for k in r.keys():
+			log.msg("%4s: %s" % (k, " ".join(r[k])))
 
 
 if __name__ == "__main__":
