@@ -22,7 +22,7 @@ def rr_icmp(dst):
     pkt = scapy.IP(dst=dst, proto=1, options=scapy.IPOption('\x01\x07\x27\x04' + '\x00'*36))
     pkt/= scapy.ICMP()
     intr_icmp = scapy.sr1( pkt, timeout=2 )
-    if (intr_icmp is not ''):
+    if intr_icmp is not '':
         return intr_icmp.options[0].routers
     return None
 
