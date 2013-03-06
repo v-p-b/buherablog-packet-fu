@@ -9,8 +9,8 @@ def msg(msg): pfu_out(msg, C_MSG)
 def err(msg): pfu_out(msg, C_ERR)
 
 def pfu_out(msg, msgcolor):
-    mod = []
-    for fr in reversed(inspect.stack()[1:-1]):
-	mod.append(fr[3])
-    print C_MOD+ '.'.join(mod) +' > '+ msgcolor + str(msg)+ C_END
+	mod = []
+	for fr in reversed(inspect.stack()[1:-1]):
+		mod.append(fr[3])
+	print C_MOD+ '.'.join(mod) +' > '+ msgcolor + str(msg)+ C_END
 
