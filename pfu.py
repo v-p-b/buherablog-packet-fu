@@ -111,7 +111,10 @@ class gwscan(GetMacsMixin):
 		log.msg('gwscan for net %s, searching gw for %s' %(net, ip))
 		lt = self.getmacs(net)
 		#ans,unans = scapy.srp(scapy.Ether(dst='ff:ff:ff:ff:ff:ff') / scapy.IP(dst=ip) / scapy.ICMP(), timeout=5)
-		ans,unans = scapy.srp(scapy.Ether(dst=lt['mac_ip'].keys()) / scapy.IP(dst=ip) / scapy.ICMP(), timeout=5)
+		pkt = scapy.Ether(dst=lt['mac_ip'].keys())
+		pkt/= scapy.IP(dst=ip)
+		pkt/= scapy.ICMP()
+		ans,unans = scapy.srp( pkt, timeout=5)
 		ret = []
 		for b in ans:
 			for a in b[1]:
@@ -149,9 +152,50 @@ class arping(GetMacsMixin):
 		for mac in tab['mac_ip']:
 			print " ", mac, " ".join(tab['mac_ip'][mac])
 
+# flagfuzzer
+class flagfuzzer:
+	def __init__(self, params):
+		if len(params) != 2:
+			self.usage()
+			exit(1)
+		self.dst = params[0]
+		self.port = int(params[1])
+		self.r = {
+			'R':[],		# RST
+			'RA':[],	# RST-ACK
+			'SA':[],	# SYN-ACK
+			'--':[],	# no response
+			'??':[]		# ICMP error msgs (?)
+		}
+		self.scanflags = ['','F','S','FS','R','RF','RS','RSF','A','AF','AS','ASF','AR','ARF','ARS','ARSF']
+
+	def usage(self):
+		print "Usage:"
+		print "\t%s flagfuzzer <target_ip> <port>" % sys.argv[0]
+
+	def start(self):
+		for flagval in self.scanflags:
+			pkt = scapy.IP(dst=self.dst)
+			pkt/= scapy.TCP(dport=self.port, sport=scapy.RandNum(1024,65535), flags=flagval)
+			x = scapy.sr1( pkt, timeout=.5)
+			sys.stderr.write( " %s \r" % flagval)
+			sent = pkt.sprintf("%TCP.flags%")
+			if sent == '':
+				sent = '-'
+			if (x is not None):
+				recvd = x.sprintf("%TCP.flags%")
+				#self.r[recvd].append(sent+"."+str(x[scapy.IP].ttl))
+				self.r[recvd].append(sent)
+			else:
+				self.r['--'].append(sent)
+		log.msg("finished")
+		del self.r['--']
+		for k in self.r.keys():
+			log.msg("%4s: %s" % (k, " ".join(self.r[k])))
+
 
 if __name__ == "__main__":
-	modulenames = ["rr", "gwscan", "arping"]
+	modulenames = ["rr", "gwscan", "arping","flagfuzzer"]
 	if len(sys.argv) < 2 or sys.argv[1] not in modulenames:
 		print sys.argv[0],"modulename"
 		print "modulenames:", ", ".join(modulenames)
@@ -163,4 +207,9 @@ if __name__ == "__main__":
 		module = gwscan(sys.argv[2:])
 	elif sys.argv[1] == "arping":
 		module = arping(sys.argv[2:])
+	elif sys.argv[1] == "flagfuzzer":
+		module = flagfuzzer(sys.argv[2:])
 	module.start()
+
+
+
