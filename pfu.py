@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
-import logging, time, os, sys, inspect, socket, nfqueue
+import logging, time, os, sys, inspect, socket, nfqueue, ipcalc, struct
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)	# prevent scapy warnings for ipv6
 from scapy import all as scapy
+from netaddr import IPAddress
 
 scapy.conf.verb = 0
 
@@ -262,12 +263,67 @@ class synfinfu:
 		scapy.send(p);
 
 
+class tsfu:
+	def __init__(self, params):
+		if len(params) != 4:
+			self.usage()
+			exit(1)
+		self.prev_ip = params[0]
+		self.target_ip = params[1]
+		self.port = int(params[2])
+		self.net = params[3]
 
+	def usage(self):
+		print "Usage:"
+		print "\t%s tsfu <previous_ip> <target_ip> <port> <net>" % sys.argv[0]
+
+	def start(self):
+		self.tsfu(self.prev_ip, self.target_ip, self.port, self.net)
+
+	# TODO: network/broadcast addr scan, bcoz this is slow... but effective
+	def tsfu(self, prev_ip, target_ip, port, net):
+		log.msg("checking for 127.0.0.1 ...")
+		ptr_, oflw_, flag_ = self.__do_tsfu(prev_ip, target_ip, port, '127.0.0.1')
+		if ptr_ is not False:
+			log.msg("Okay, it works. (ptr=%-2d overflow=%d)" % (ptr_, oflw_))
+		else:
+			log.err("shit... :/")
+			exit(0)
+	
+		log.msg("scanning ...")
+		for test_ip in ipcalc.Network(net):
+			ptr, oflw, flag = self.__do_tsfu(prev_ip, target_ip, port, test_ip)
+			if ptr is not None:
+				dist_oflw = oflw_ - oflw
+				if(dist_oflw == 0):
+					info = "is known"
+				else:
+					info = "is known by another box behind this one."
+				log.msg("%s %s (ptr=%-2d overflow=%d distance=%d)" % (test_ip, info, ptr, oflw, dist_oflw))
+
+	def __do_tsfu(self, prev_ip, target_ip, port, test_ip):
+		#        Opt_header________   IP1______________________    TS1_____    IP2______________________    TS2_____
+		tsopts = '\x44\x14\x05\x03' + IPAddress(prev_ip).packed  + '\x00'*4  + IPAddress(test_ip).packed  + '\x00'*	4
+		pkt = scapy.IP(dst=target_ip, proto=6, options=scapy.IPOption(tsopts))
+		pkt/= scapy.TCP(sport=scapy.RandNum(1024,65535), dport=port)
+		ret = scapy.sr1(pkt, timeout=1)
+		if ret == None:
+			return None, None, None
+		#ret.show()
+		optval = ret.options[0].value
+		ts2bin = optval[14:]
+		ts2 = struct.unpack('I', optval[14:])[0]
+		ptr,x = struct.unpack('BB', optval[0:2])
+		oflw = x >> 4
+		flag = x & 0xF
+		if(ts2):
+			return ptr, oflw, flag
+		return None, None, None
 
 
 
 if __name__ == "__main__":
-	modulenames = ["rr", "gwscan", "arping", "flagfuzzer", "synfinfu"]
+	modulenames = ["rr", "gwscan", "arping", "flagfuzzer", "synfinfu", "tsfu"]
 	if len(sys.argv) < 2 or sys.argv[1] not in modulenames:
 		print sys.argv[0],"modulename"
 		print "modulenames:", ", ".join(modulenames)
@@ -283,7 +339,12 @@ if __name__ == "__main__":
 		module = flagfuzzer(sys.argv[2:])
 	elif sys.argv[1] == "synfinfu":
 		module = synfinfu(sys.argv[2:])
+	elif sys.argv[1] == "tsfu":
+		module = tsfu(sys.argv[2:])
 	module.start()
+
+
+
 
 
 
