@@ -291,7 +291,12 @@ class tsfu:
 			exit(0)
 	
 		log.msg("scanning ...")
-		for test_ip in ipcalc.Network(net):
+		try:
+			iplist = ipcalc.Network(net)
+		except ValueError:
+			iplist = self.__iplist(net)
+		for test_ip in iplist:
+#			print test_ip
 			ptr, oflw, flag = self.__do_tsfu(prev_ip, target_ip, port, test_ip)
 			if ptr is not None:
 				dist_oflw = oflw_ - oflw
@@ -319,6 +324,38 @@ class tsfu:
 		if(ts2):
 			return ptr, oflw, flag
 		return None, None, None
+
+	def __iplist(self, expr):
+		ret = []
+		segs = expr.split('.')
+#		print segs
+		s = []
+		for seg in segs:
+			if seg == "*":
+				seg = '0-255'
+			se = seg.split(',')
+			sa = []
+			for s1 in se:
+				s2 = s1.split('-')
+				if len(s2) == 1:
+					sa.append(int(s1))
+				elif len(s2) == 2:
+					for i in range(int(s2[0]), int(s2[1])+1):
+						sa.append(i)
+				else:
+					log.err("invalid expression: '%s'" % expr)
+					exit(1)
+			s.append(sa)
+#		print s
+		# :///
+		for a in s[0]:
+			for b in s[1]:
+				for c in s[2]:
+					for d in s[3]:
+						ret.append("%d.%d.%d.%d" % (a, b, c, d))
+#		print ret
+		return ret
+		
 
 
 
